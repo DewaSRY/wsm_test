@@ -76,6 +76,18 @@ func (r *WMSOrderRepository) UpdateShipping(ctx context.Context, orderSN string,
 	return err
 }
 
+// UpdateMarketplaceStatus updates marketplace and shipping status (from marketplace sync)
+func (r *WMSOrderRepository) UpdateMarketplaceStatus(ctx context.Context, orderSN string, marketplaceStatus string, shippingStatus string) error {
+	_, err := r.db.NewUpdate().
+		Model((*domain.Order)(nil)).
+		Set("marketplace_status = ?", marketplaceStatus).
+		Set("shipping_status = ?", shippingStatus).
+		Where("order_sn = ?", orderSN).
+		Exec(ctx)
+
+	return err
+}
+
 // Create creates a new order with items (for ingesting from marketplace)
 func (r *WMSOrderRepository) Create(ctx context.Context, order *domain.Order) error {
 	tx, err := r.db.BeginTx(ctx, nil)

@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -60,6 +62,26 @@ func New() *FiberServer {
 	app := fiber.New(fiber.Config{
 		AppName: "WMS Backend API",
 	})
+	// create worker 
+	worker := marketplace.MarketPlaceSync{
+		Client: mpClient,
+		Repo: wmsOrderRepo,
+	}
+
+	go worker.SyncAllOrders(context.Background())
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			log.Println("[Scheduler] Running marketplace order sync...")
+			_, err := worker.SyncAllOrders(context.Background())
+			if err != nil {
+				log.Printf("[Scheduler] Sync failed: %v", err)
+			}
+		}
+	}()
 
 	return &FiberServer{
 		App:             app,

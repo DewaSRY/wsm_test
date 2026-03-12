@@ -7,7 +7,6 @@ import (
 	"github.com/uptrace/bun"
 )
 
-// WMSStatus represents the warehouse management status of an order
 type WMSStatus string
 
 const (
@@ -17,7 +16,6 @@ const (
 	WMSStatusShipped     WMSStatus = "SHIPPED"
 )
 
-// Valid status transitions
 var validTransitions = map[WMSStatus][]WMSStatus{
 	WMSStatusReadyToPick: {WMSStatusPicking},
 	WMSStatusPicking:     {WMSStatusPacked},
@@ -25,7 +23,6 @@ var validTransitions = map[WMSStatus][]WMSStatus{
 	WMSStatusShipped:     {}, // Terminal state
 }
 
-// CanTransitionTo checks if a status transition is valid
 func (s WMSStatus) CanTransitionTo(target WMSStatus) bool {
 	allowed, exists := validTransitions[s]
 	if !exists {
@@ -39,7 +36,6 @@ func (s WMSStatus) CanTransitionTo(target WMSStatus) bool {
 	return false
 }
 
-// Order represents a warehouse order
 type Order struct {
 	bun.BaseModel `bun:"table:orders,alias:o"`
 
@@ -68,7 +64,6 @@ type OrderItem struct {
 	Price    float64 `bun:"price,notnull" json:"price"`
 }
 
-// Validation errors
 var (
 	ErrOrderNotFound       = errors.New("order not found")
 	ErrInvalidTransition   = errors.New("invalid status transition")
@@ -77,12 +72,10 @@ var (
 	ErrOrderNotPacked      = errors.New("order is not packed")
 )
 
-// WMSOrderListResponse represents the response for listing WMS orders
 type WMSOrderListResponse struct {
 	Orders []OrderSummary `json:"orders"`
 }
 
-// OrderSummary represents a summary view of an order
 type OrderSummary struct {
 	OrderSN           string    `json:"order_sn"`
 	WMSStatus         WMSStatus `json:"wms_status"`
@@ -92,7 +85,6 @@ type OrderSummary struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
-// ToSummary converts an Order to OrderSummary
 func (o *Order) ToSummary() OrderSummary {
 	return OrderSummary{
 		OrderSN:           o.OrderSN,
@@ -104,7 +96,6 @@ func (o *Order) ToSummary() OrderSummary {
 	}
 }
 
-// StatusUpdateResponse represents the response for status update actions
 type StatusUpdateResponse struct {
 	OrderSN        string    `json:"order_sn"`
 	WMSStatus      WMSStatus `json:"wms_status"`

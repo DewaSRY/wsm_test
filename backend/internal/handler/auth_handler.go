@@ -17,7 +17,6 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 	}
 }
 
-// Register handles user registration
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	var req domain.RegisterRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -26,7 +25,6 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		)
 	}
 
-	// Basic validation
 	if req.Email == "" || req.Password == "" || req.Name == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(
 			domain.ErrorResponse("Bad Request", "Email, password, and name are required"),

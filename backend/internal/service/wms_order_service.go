@@ -23,7 +23,6 @@ func NewWMSOrderService(repo *repository.WMSOrderRepository, mpClient *marketpla
 	}
 }
 
-// ListOrders returns all orders with optional filtering by wms_status
 func (s *WMSOrderService) ListOrders(ctx context.Context, wmsStatus *domain.WMSStatus) ([]domain.OrderSummary, error) {
 	orders, err := s.repo.List(ctx, wmsStatus)
 	if err != nil {
@@ -39,7 +38,6 @@ func (s *WMSOrderService) ListOrders(ctx context.Context, wmsStatus *domain.WMSS
 	return summaries, nil
 }
 
-// GetOrderDetail returns full order details by order_sn
 func (s *WMSOrderService) GetOrderDetail(ctx context.Context, orderSN string) (*domain.Order, error) {
 	order, err := s.repo.GetByOrderSN(ctx, orderSN)
 	if err != nil {
