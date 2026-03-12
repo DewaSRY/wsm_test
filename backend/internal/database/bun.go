@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"backend/internal/config"
+	"backend/internal/domain"
 
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
@@ -75,12 +76,7 @@ func (db *DB) Close() error {
 
 func (db *DB) Migrate(ctx context.Context) error {
 	models := []interface{}{
-		// (*domain.Merchant)(nil),
-		// (*domain.OAuthToken)(nil),
-		// (*domain.Order)(nil),
-		// (*domain.OrderItem)(nil),
-		// (*domain.Shipment)(nil),
-		// (*domain.WebhookEvent)(nil),
+		(*domain.User)(nil),
 	}
 
 	for _, model := range models {

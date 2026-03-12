@@ -7,10 +7,17 @@ import (
 )
 
 type Config struct {
-	Server      ServerConfig
-	Database    DatabaseConfig
-	Marketplace MarketplaceConfig
+	Server          ServerConfig
+	Database        DatabaseConfig
+	Marketplace     MarketplaceConfig
 	MarketPlaceAuth MarketPlaceAuth
+	JWT             JWTConfig
+}
+
+type JWTConfig struct {
+	Secret             string
+	AccessTokenExpiry  time.Duration
+	RefreshTokenExpiry time.Duration
 }
 
 type ServerConfig struct {
@@ -84,12 +91,17 @@ func Load() *Config {
 			RetryDelay:    getEnvDuration("MARKETPLACE_RETRY_DELAY", 1*time.Second),
 		},
 		MarketPlaceAuth: MarketPlaceAuth{
-			ShopId:  getEnvString("SHOP_ID", "shopee-123"),
-			State:  getEnvString("STATE", "test"),
-			PartnerId:  getEnvString("PARTNER_ID", "992800"),
-			Timestamp:  getEnvString("TIMESTAMP", "1773280806"),
-			Sign:  getEnvString("SIGN", "5035ab502857d829449c4dd391c9563c32698789296687d8f8879fa81934d7ff"),
+			ShopId:    getEnvString("SHOP_ID", "shopee-123"),
+			State:     getEnvString("STATE", "test"),
+			PartnerId: getEnvString("PARTNER_ID", "992800"),
+			Timestamp: getEnvString("TIMESTAMP", "1773280806"),
+			Sign:      getEnvString("SIGN", "5035ab502857d829449c4dd391c9563c32698789296687d8f8879fa81934d7ff"),
 			Redirect:  getEnvString("REDIRECT", "https://example.com/callback"),
+		},
+		JWT: JWTConfig{
+			Secret:             getEnvString("JWT_SECRET", "your-super-secret-key-change-in-production"),
+			AccessTokenExpiry:  getEnvDuration("JWT_ACCESS_TOKEN_EXPIRY", 15*time.Minute),
+			RefreshTokenExpiry: getEnvDuration("JWT_REFRESH_TOKEN_EXPIRY", 7*24*time.Hour),
 		},
 	}
 }
