@@ -40,6 +40,14 @@ function statusClass(value: string | null | undefined, type: "marketplace" | "sh
   return "bg-[#f0f0f3] text-[#6d6d78]";
 }
 
+function displayWmsStatus(status: string) {
+  if (status === "READY_TO_PICK") return "READY TO PICK";
+  if (status === "PICKING") return "PICKING";
+  if (status === "PACKED") return "READY TO SHIP";
+  if (status === "SHIPPED") return "SHIPPING";
+  return status.replaceAll("_", " ");
+}
+
 type HeaderLabelProps = {
   label: string;
   withIcon?: boolean;
@@ -84,7 +92,10 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
     columnHelper.accessor("order_sn", {
       header: () => <HeaderLabel label="Order SN" />,
       cell: (info) => (
-        <button className="font-medium text-[#353546] hover:text-[#2f66ff]" onClick={() => openOrderDetail(info.getValue())}>
+        <button
+          className="font-medium text-[#353546] hover:text-[#2f66ff]"
+          onClick={() => openOrderDetail(info.getValue())}
+        >
           {info.getValue()}
         </button>
       ),
@@ -102,7 +113,9 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
     columnHelper.accessor("shipping_status", {
       header: () => <HeaderLabel label="Shipping Status" />,
       cell: (info) => (
-        <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${statusClass(info.getValue(), "shipping")}`}>
+        <span
+          className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${statusClass(info.getValue(), "shipping")}`}
+        >
           {(info.getValue() ?? "-").replaceAll("_", " ")}
         </span>
       ),
@@ -110,8 +123,10 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
     columnHelper.accessor("wms_status", {
       header: () => <HeaderLabel label="WMS Status" />,
       cell: (info) => (
-        <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${statusClass(info.getValue(), "wms")}`}>
-          {info.getValue().replaceAll("_", " ")}
+        <span
+          className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${statusClass(info.getValue(), "wms")}`}
+        >
+          {displayWmsStatus(info.getValue())}
         </span>
       ),
     }),
