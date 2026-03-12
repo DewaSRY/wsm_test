@@ -17,7 +17,7 @@ func (s *FiberServer) RegisterFiberRoutes() {
 	s.App.Use(cors.New(cors.Config{
 		AllowOrigins:     "*",
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS,PATCH",
-		AllowHeaders:     "Accept,Authorization,Content-Type",
+		AllowHeaders:     "Accept,Authorization,Content-Type,X-Access-Token",
 		AllowCredentials: false,
 		MaxAge:           300,
 	}))
@@ -41,11 +41,19 @@ func (s *FiberServer) RegisterFiberRoutes() {
 	// User profile
 	protected.Get("/me", s.authHandler.GetMe)
 
-
-	// Order routes (protected)
+	// Order routes (protected) - Marketplace orders
 	orders := protected.Group("/orders")
 	orders.Get("/", s.orderHandler.ListOrders)
 	orders.Get("/:order_sn", s.orderHandler.GetOrderDetail)
+
+	// Warehouse routes (protected) - WMS orders
+	warehouse := protected.Group("/warehouse")
+	wmsOrders := warehouse.Group("/orders")
+	wmsOrders.Get("/", s.wmsOrderHandler.ListOrders)
+	wmsOrders.Get("/:order_sn", s.wmsOrderHandler.GetOrderDetail)
+	wmsOrders.Post("/:order_sn/pick", s.wmsOrderHandler.PickOrder)
+	wmsOrders.Post("/:order_sn/pack", s.wmsOrderHandler.PackOrder)
+	wmsOrders.Post("/:order_sn/ship", s.wmsOrderHandler.ShipOrder)
 }
 
 func (s *FiberServer) HelloWorldHandler(c *fiber.Ctx) error {

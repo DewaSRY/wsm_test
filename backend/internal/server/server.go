@@ -21,8 +21,9 @@ type FiberServer struct {
 	db  *database.DB
 
 	// Handlers
-	authHandler  *handler.AuthHandler
-	orderHandler *handler.OrderHandler
+	authHandler     *handler.AuthHandler
+	orderHandler    *handler.OrderHandler
+	wmsOrderHandler *handler.WMSOrderHandler
 
 	// Middleware
 	authMiddleware *middleware.AuthMiddleware
@@ -39,13 +40,19 @@ func New() *FiberServer {
 
 	mpClient := marketplace.New(cfg)
 
+	// Repositories
 	userRepo := repository.NewUserRepository(db)
+	wmsOrderRepo := repository.NewWMSOrderRepository(db)
 
+	// Services
 	authService := service.NewAuthService(userRepo, &cfg.JWT)
 	orderService := service.NewOrderService(mpClient)
+	wmsOrderService := service.NewWMSOrderService(wmsOrderRepo, mpClient)
 
+	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
 	orderHandler := handler.NewOrderHandler(orderService)
+	wmsOrderHandler := handler.NewWMSOrderHandler(wmsOrderService)
 
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
@@ -55,12 +62,13 @@ func New() *FiberServer {
 	})
 
 	return &FiberServer{
-		App:            app,
-		cfg:            cfg,
-		db:             db,
-		authHandler:    authHandler,
-		orderHandler:   orderHandler,
-		authMiddleware: authMiddleware,
+		App:             app,
+		cfg:             cfg,
+		db:              db,
+		authHandler:     authHandler,
+		orderHandler:    orderHandler,
+		wmsOrderHandler: wmsOrderHandler,
+		authMiddleware:  authMiddleware,
 	}
 }
 

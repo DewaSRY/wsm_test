@@ -74,12 +74,19 @@ func (db *DB) Close() error {
 	return db.DB.Close()
 }
 
+// Migrate creates or updates database tables based on domain models
 func (db *DB) Migrate(ctx context.Context) error {
+	// Register all models that need tables
 	models := []interface{}{
 		(*domain.User)(nil),
+		(*domain.Order)(nil),
+		(*domain.OrderItem)(nil),
 	}
 
+	log.Println("[Database] Running auto-migration...")
+
 	for _, model := range models {
+		// Create table if not exists
 		_, err := db.NewCreateTable().
 			Model(model).
 			IfNotExists().
@@ -87,11 +94,28 @@ func (db *DB) Migrate(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to create table for %T: %w", model, err)
 		}
+		log.Printf("[Database] Migrated table for %T", model)
 	}
 
+	// Create indexes for orders table
+	db.createIndexIfNotExists(ctx, "orders", "idx_orders_wms_status", "wms_status")
+	db.createIndexIfNotExists(ctx, "orders", "idx_orders_shop_id", "shop_id")
+	db.createIndexIfNotExists(ctx, "orders", "idx_orders_updated_at", "updated_at DESC")
 
+	// Create indexes for order_items table
+	db.createIndexIfNotExists(ctx, "order_items", "idx_order_items_sku", "sku")
 
+	log.Println("[Database] Auto-migration completed")
 	return nil
+}
+
+// createIndexIfNotExists creates an index if it doesn't already exist
+func (db *DB) createIndexIfNotExists(ctx context.Context, table, indexName, columns string) {
+	query := fmt.Sprintf(`CREATE INDEX IF NOT EXISTS %s ON %s (%s)`, indexName, table, columns)
+	_, err := db.ExecContext(ctx, query)
+	if err != nil {
+		log.Printf("[Database] Warning: failed to create index %s: %v", indexName, err)
+	}
 }
 
 
