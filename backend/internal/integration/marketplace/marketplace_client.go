@@ -143,6 +143,100 @@ func (c *MarketplaceClient) GetOrderDetail(ctx context.Context, orderSN string) 
 }
 
 
+func (c *MarketplaceClient) CancelOrder(ctx context.Context, accessToken, orderSN string) error {
+	reqURL := fmt.Sprintf("%s/order/cancel", c.config.Marketplace.BaseURL)
+
+	headers := map[string]string{
+		"Authorization": "Bearer " + accessToken,
+	}
+
+	body := map[string]string{
+		"order_sn": orderSN,
+	}
+
+	var resp domain.APIResponse
+	return c.doRequest(ctx, http.MethodPost, reqURL, headers, body, &resp)
+}
+
+func (c *MarketplaceClient) UpdateStock(ctx context.Context, accessToken, sku string, quantity int) (*domain.Product, error) {
+	reqURL := fmt.Sprintf("%s/product/stock/update", c.config.Marketplace.BaseURL)
+
+	headers := map[string]string{
+		"Authorization": "Bearer " + accessToken,
+	}
+
+	body := map[string]interface{}{
+		"sku":      sku,
+		"quantity": quantity,
+	}
+
+	var resp domain.ProductResponse
+	if err := c.doRequest(ctx, http.MethodPost, reqURL, headers, body, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp.Data, nil
+}
+
+func (c *MarketplaceClient) UpdatePrice(ctx context.Context, accessToken, sku string, price float64) (*domain.Product, error) {
+	reqURL := fmt.Sprintf("%s/product/price/update", c.config.Marketplace.BaseURL)
+
+	headers := map[string]string{
+		"Authorization": "Bearer " + accessToken,
+	}
+
+	body := map[string]interface{}{
+		"sku":   sku,
+		"price": price,
+	}
+
+	var resp domain.ProductResponse
+	if err := c.doRequest(ctx, http.MethodPost, reqURL, headers, body, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp.Data, nil
+}
+
+func (c *MarketplaceClient) GetLogisticChannels(ctx context.Context, accessToken string) ([]domain.LogisticChannel, error) {
+	reqURL := fmt.Sprintf("%s/logistic/channels", c.config.Marketplace.BaseURL)
+
+	headers := map[string]string{
+		"Authorization": "Bearer " + accessToken,
+	}
+
+	var resp domain.LogisticChannelsResponse
+	if err := c.doRequest(ctx, http.MethodGet, reqURL, headers, nil, &resp); err != nil {
+		return nil, err
+	}
+
+	return resp.Data, nil
+}
+
+func (c *MarketplaceClient) ShipOrder(ctx context.Context, accessToken, orderSN, channelID string) (*domain.ShipOrderResponse, error) {
+	reqURL := fmt.Sprintf("%s/logistic/ship", c.config.Marketplace.BaseURL)
+
+	headers := map[string]string{
+		"Authorization": "Bearer " + accessToken,
+	}
+
+	body := map[string]string{
+		"order_sn":   orderSN,
+		"channel_id": channelID,
+	}
+
+	var resp struct {
+		Message string                   `json:"message"`
+		Data    domain.ShipOrderResponse `json:"data"`
+	}
+	if err := c.doRequest(ctx, http.MethodPost, reqURL, headers, body, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp.Data, nil
+}
+
+
 
 func (c *MarketplaceClient) doRequest(ctx context.Context, method, reqURL string, headers map[string]string, body interface{}, result interface{}) error {
 	var bodyReader io.Reader
