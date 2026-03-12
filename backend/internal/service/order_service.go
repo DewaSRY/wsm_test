@@ -23,3 +23,7 @@ func (s *OrderService) ListOrders(ctx context.Context) ([]domain.MarketplaceOrde
 func (s *OrderService) GetOrderDetail(ctx context.Context, orderSN string) (*domain.MarketplaceOrder, error) {
 	return s.marketplaceClient.GetOrderDetail(ctx, orderSN)
 }
+
+func (s *OrderService) ListLogisticChannels(ctx context.Context) ([]domain.LogisticChannel, error) {
+	return s.marketplaceClient.GetLogisticChannels(ctx)
+}

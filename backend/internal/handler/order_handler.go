@@ -17,7 +17,6 @@ func NewOrderHandler(orderService *service.OrderService) *OrderHandler {
 	}
 }
 
-// ListOrders returns the list of orders from the marketplace
 func (h *OrderHandler) ListOrders(c *fiber.Ctx) error {
 	orders, err := h.orderService.ListOrders(c.Context())
 	if err != nil {
@@ -31,7 +30,6 @@ func (h *OrderHandler) ListOrders(c *fiber.Ctx) error {
 	)
 }
 
-// GetOrderDetail returns the details of a specific order
 func (h *OrderHandler) GetOrderDetail(c *fiber.Ctx) error {
 	orderSN := c.Params("order_sn")
 	if orderSN == "" {
@@ -49,6 +47,19 @@ func (h *OrderHandler) GetOrderDetail(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(
 		domain.SuccessResponse("Order retrieved successfully", order),
+	)
+}
+
+func (h *OrderHandler) ListLogisticChannels(c *fiber.Ctx) error {
+	channels, err := h.orderService.ListLogisticChannels(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(
+			domain.ErrorResponse("Internal Server Error", err.Error()),
+		)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(
+		domain.SuccessResponse("Logistic channels retrieved successfully", channels),
 	)
 }
 

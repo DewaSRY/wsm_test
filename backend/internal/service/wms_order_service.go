@@ -106,7 +106,7 @@ func (s *WMSOrderService) PackOrder(ctx context.Context, orderSN string) (*domai
 }
 
 // ShipOrder ships an order by calling marketplace API and syncing the result (PACKED -> SHIPPED)
-func (s *WMSOrderService) ShipOrder(ctx context.Context, orderSN string, channelID string, accessToken string) (*domain.StatusUpdateResponse, error) {
+func (s *WMSOrderService) ShipOrder(ctx context.Context, orderSN string, channelID string ) (*domain.StatusUpdateResponse, error) {
 	order, err := s.repo.GetByOrderSN(ctx, orderSN)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -121,7 +121,7 @@ func (s *WMSOrderService) ShipOrder(ctx context.Context, orderSN string, channel
 	}
 
 	// Call marketplace API to ship the order
-	shipResp, err := s.mpClient.ShipOrder(ctx, accessToken, orderSN, channelID)
+	shipResp, err := s.mpClient.ShipOrder(ctx, orderSN, channelID)
 	if err != nil {
 		log.Printf("[WMSOrderService] Failed to ship order %s via marketplace API: %v", orderSN, err)
 		return nil, err

@@ -154,18 +154,8 @@ func (h *WMSOrderHandler) ShipOrder(c *fiber.Ctx) error {
 		)
 	}
 
-	// Get access token from Authorization header or request body
-	accessToken := req.AccessToken
-	if accessToken == "" {
-		accessToken = c.Get("X-Access-Token")
-	}
-	if accessToken == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			domain.ErrorResponse("Bad Request", "Access token is required"),
-		)
-	}
 
-	result, err := h.service.ShipOrder(c.Context(), orderSN, req.ChannelID, accessToken)
+	result, err := h.service.ShipOrder(c.Context(), orderSN, req.ChannelID)
 	if err != nil {
 		if errors.Is(err, domain.ErrOrderNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(

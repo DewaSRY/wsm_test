@@ -46,6 +46,10 @@ func (s *FiberServer) RegisterFiberRoutes() {
 	orders.Get("/", s.orderHandler.ListOrders)
 	orders.Get("/:order_sn", s.orderHandler.GetOrderDetail)
 
+	logistic := protected.Group("/logistic")
+	logistic.Get("/chanel", s.orderHandler.ListLogisticChannels)
+	logistic.Get("/channels", s.orderHandler.ListLogisticChannels)
+
 	// Warehouse routes (protected) - WMS orders
 	warehouse := protected.Group("/warehouse")
 	wmsOrders := warehouse.Group("/orders")
