@@ -5,6 +5,9 @@ import (
 	"backend/internal/domain"
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -27,16 +30,16 @@ type MarketplaceClient struct {
 }
 
 func (c *MarketplaceClient) Authorize(ctx context.Context) (*AuthorizeResponse, error) {
-	timestamp := time.Now().Unix()
 	apiPath := "/oauth/authorize"
 	marketPlaceAuth := c.config.MarketPlaceAuth
 
-	params := url.Values{}
+	params, err := c.oauthSignedParams(apiPath, marketPlaceAuth.ShopId)
+	if err != nil {
+		return nil, err
+	}
+
 	params.Set("shop_id", marketPlaceAuth.ShopId)
 	params.Set("state", marketPlaceAuth.State)
-	params.Set("partner_id", marketPlaceAuth.PartnerId)
-	params.Set("timestamp", strconv.FormatInt(timestamp, 10))
-	params.Set("sign", marketPlaceAuth.Sign)
 	params.Set("redirect", marketPlaceAuth.Redirect)
 
 	reqURL := fmt.Sprintf("%s%s?%s", c.config.Marketplace.BaseURL, apiPath, params.Encode())
@@ -51,21 +54,23 @@ func (c *MarketplaceClient) Authorize(ctx context.Context) (*AuthorizeResponse, 
 	return &resp, nil
 }
 
-func (c *MarketplaceClient) ExchangeToken(ctx context.Context, code string) (*domain.TokenResponse, error) {
-	timestamp := time.Now().Unix()
-	apiPath := "/oauth/token"
-	marketPlaceAuth := c.config.MarketPlaceAuth
+func (c *MarketplaceClient) ExchangeToken(ctx context.Context) (*domain.TokenResponse, error) {
+	if c.authCode == "" {
+		return nil, fmt.Errorf("authorize code is empty: call Authorize before ExchangeToken")
+	}
 
-	params := url.Values{}
-	params.Set("partner_id", marketPlaceAuth.PartnerId)
-	params.Set("timestamp", strconv.FormatInt(timestamp, 10))
-	params.Set("sign", marketPlaceAuth.Sign)
+	apiPath := "/oauth/token"
+
+	params, err := c.oauthSignedParams(apiPath, c.authCode)
+	if err != nil {
+		return nil, err
+	}
 
 	reqURL := fmt.Sprintf("%s%s?%s", c.config.Marketplace.BaseURL, apiPath, params.Encode())
 
 	body := map[string]string{
 		"grant_type": "authorization_code",
-		"code":       code,
+		"code":       c.authCode,
 	}
 
 	var resp TokenAPIResponse
@@ -80,14 +85,12 @@ func (c *MarketplaceClient) ExchangeToken(ctx context.Context, code string) (*do
 }
 
 func (c *MarketplaceClient) RefreshToken(ctx context.Context, refreshToken string) (*domain.TokenResponse, error) {
-	timestamp := time.Now().Unix()
 	apiPath := "/oauth/token"
-	marketPlaceAuth := c.config.MarketPlaceAuth
 
-	params := url.Values{}
-	params.Set("partner_id", marketPlaceAuth.PartnerId)
-	params.Set("timestamp", strconv.FormatInt(timestamp, 10))
-	params.Set("sign", marketPlaceAuth.Sign)
+	params, err := c.oauthSignedParams(apiPath, refreshToken)
+	if err != nil {
+		return nil, err
+	}
 
 	reqURL := fmt.Sprintf("%s%s?%s", c.config.Marketplace.BaseURL, apiPath, params.Encode())
 
@@ -111,7 +114,7 @@ func (c *MarketplaceClient) ListOrders(ctx context.Context) ([]domain.Marketplac
 	reqURL := fmt.Sprintf("%s/order/list", c.config.Marketplace.BaseURL)
 
 	headers := map[string]string{
-		"Authorization": "Bearer " + c.authCode,
+		"Authorization": "Bearer " + c.bareToken,
 	}
 
 	var resp domain.OrderListResponse
@@ -128,7 +131,7 @@ func (c *MarketplaceClient) GetOrderDetail(ctx context.Context, orderSN string) 
 	reqURL := fmt.Sprintf("%s/order/detail?%s", c.config.Marketplace.BaseURL, params.Encode())
 
 	headers := map[string]string{
-		"Authorization": "Bearer " + c.authCode,
+		"Authorization": "Bearer " + c.bareToken,
 	}
 
 	var resp struct {
@@ -304,6 +307,7 @@ func (c *MarketplaceClient) doRequest(ctx context.Context, method, reqURL string
 
 		if resp.StatusCode == 401 && c.refreshToken != "" {
 			c.RefreshToken(ctx, c.refreshToken)
+			continue
 		}
 
 		if resp.StatusCode >= 400 {
@@ -322,8 +326,29 @@ func (c *MarketplaceClient) doRequest(ctx context.Context, method, reqURL string
 		}
 
 		if result != nil {
-			if err := json.Unmarshal(respBody, result); err != nil {
-				return fmt.Errorf("failed to unmarshal response: %w", err)
+			trimmedBody := bytes.TrimSpace(respBody)
+			if len(trimmedBody) > 0 {
+				if err := json.Unmarshal(trimmedBody, result); err != nil {
+					// Fallback 1: marketplace may return an envelope and caller expects only `data` payload.
+					var envelope struct {
+						Data json.RawMessage `json:"data"`
+					}
+					if envErr := json.Unmarshal(trimmedBody, &envelope); envErr == nil && len(bytes.TrimSpace(envelope.Data)) > 0 {
+						if dataErr := json.Unmarshal(envelope.Data, result); dataErr == nil {
+							return nil
+						}
+					}
+
+					// Fallback 2: some gateways return JSON as an escaped string.
+					var asString string
+					if strErr := json.Unmarshal(trimmedBody, &asString); strErr == nil && asString != "" {
+						if unquoteErr := json.Unmarshal([]byte(asString), result); unquoteErr == nil {
+							return nil
+						}
+					}
+
+					return fmt.Errorf("failed to unmarshal response for %s %s: %w; raw=%s", method, reqURL, err, string(trimmedBody))
+				}
 			}
 		}
 
@@ -340,4 +365,44 @@ func New(config *config.Config) *MarketplaceClient {
 			Timeout: config.Marketplace.Timeout,
 		},
 	}
+}
+
+func (c *MarketplaceClient) oauthSignedParams(apiPath, suffix string) (url.Values, error) {
+	marketPlaceAuth := c.config.MarketPlaceAuth
+
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	sign := ""
+
+	if marketPlaceAuth.PartnerKey != "" {
+		sign = c.sign(apiPath, timestamp, suffix)
+	} else if marketPlaceAuth.Timestamp != "" && marketPlaceAuth.Sign != "" {
+		// Legacy fallback for environments that already provide a pre-signed pair.
+		timestamp = marketPlaceAuth.Timestamp
+		sign = marketPlaceAuth.Sign
+	} else {
+		return nil, fmt.Errorf("missing marketplace signing credentials: set PARTNER_KEY or both TIMESTAMP and SIGN")
+	}
+
+	params := url.Values{}
+	params.Set("partner_id", marketPlaceAuth.PartnerId)
+	params.Set("timestamp", timestamp)
+	params.Set("sign", sign)
+
+	return params, nil
+}
+
+func (c *MarketplaceClient) sign(apiPath, timestamp, suffix string) string {
+	marketPlaceAuth := c.config.MarketPlaceAuth
+
+	if marketPlaceAuth.PartnerKey == "" {
+		return marketPlaceAuth.Sign
+	}
+
+	base := marketPlaceAuth.PartnerId + apiPath + timestamp
+	if suffix != "" {
+		base += suffix
+	}
+	h := hmac.New(sha256.New, []byte(marketPlaceAuth.PartnerKey))
+	_, _ = h.Write([]byte(base))
+	return hex.EncodeToString(h.Sum(nil))
 }

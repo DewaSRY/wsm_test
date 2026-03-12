@@ -94,7 +94,11 @@ func (r *WMSOrderRepository) Create(ctx context.Context, order *domain.Order) er
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
 
 	// Insert order
 	_, err = tx.NewInsert().Model(order).Exec(ctx)
@@ -113,7 +117,8 @@ func (r *WMSOrderRepository) Create(ctx context.Context, order *domain.Order) er
 		}
 	}
 
-	return tx.Commit()
+	err = tx.Commit()
+	return err
 }
 
 // Exists checks if an order exists

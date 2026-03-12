@@ -58,6 +58,7 @@ type MarketPlaceAuth struct {
 	ShopId string
 	State string
 	PartnerId string
+	PartnerKey string
 	Timestamp string
 	Sign string
 	Redirect string
@@ -87,15 +88,16 @@ func Load() *Config {
 		Marketplace: MarketplaceConfig{
 			BaseURL:       getEnvString("MARKETPLACE_BASE_URL", "https://fullstack-technical-test.suksescorp.co.id"),
 			Timeout:       getEnvDuration("MARKETPLACE_TIMEOUT", 30*time.Second),
-			RetryAttempts: getEnvInt("MARKETPLACE_RETRY_ATTEMPTS", 3),
+			RetryAttempts: getEnvInt("MARKETPLACE_RETRY_ATTEMPTS", 10),
 			RetryDelay:    getEnvDuration("MARKETPLACE_RETRY_DELAY", 1*time.Second),
 		},
 		MarketPlaceAuth: MarketPlaceAuth{
 			ShopId:    getEnvString("SHOP_ID", "shopee-123"),
 			State:     getEnvString("STATE", "test"),
 			PartnerId: getEnvString("PARTNER_ID", "992800"),
-			Timestamp: getEnvString("TIMESTAMP", "1773280806"),
-			Sign:      getEnvString("SIGN", "5035ab502857d829449c4dd391c9563c32698789296687d8f8879fa81934d7ff"),
+			PartnerKey: getEnvString("PARTNER_KEY", "mock-secret-partner-key"),
+			Timestamp: getEnvString("TIMESTAMP", ""),
+			Sign:      getEnvString("SIGN", ""),
 			Redirect:  getEnvString("REDIRECT", "https://example.com/callback"),
 		},
 		JWT: JWTConfig{

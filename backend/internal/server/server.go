@@ -42,6 +42,15 @@ func New() *FiberServer {
 
 	mpClient := marketplace.New(cfg)
 
+	_, err := mpClient.Authorize(context.Background())
+	if err != nil {
+		log.Printf("marketplace authorize failed: %v", err)
+	} else {
+		if _, err := mpClient.ExchangeToken(context.Background()); err != nil {
+			log.Printf("marketplace exchange token failed: %v", err)
+		}
+	}
+
 	// Repositories
 	userRepo := repository.NewUserRepository(db)
 	wmsOrderRepo := repository.NewWMSOrderRepository(db)
